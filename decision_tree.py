@@ -132,11 +132,18 @@ def classify(data_point, decision_tree):
 	if type(decision_tree) == list:
 		return np.mean(decision_tree)
 	elif data_point[decision_tree.attribute] == '?':
-		return classify(data_point, r.choice(decision_tree.left, decision_tree.right))
+		return classify(data_point, r.choice([decision_tree.left, decision_tree.right]))
 	elif float(data_point[decision_tree.attribute]) <= decision_tree.split_value:
 		return classify(data_point, decision_tree.left)
 	else:
 		return classify(data_point, decision_tree.right)
+
+def classify_test_data(test_data, decision_tree):
+	classifications = []
+	for city in test_data:
+		classifications.append(classify(city, decision_tree))
+
+	return classifications
 
 def traverse(tree, f, attributes, ID):
 	if type(tree) == list:
@@ -179,6 +186,20 @@ def print_tree(tree, filename, attributes):
 		traverse(tree, f, attributes, 0)
 		f.write("}\n")
 
+def sse(test_set, predicted_values, target):
+	sum_squared_error = 0
+	for i in  range(len(test_set)):
+		sum_squared_error = sum_squared_error + (float(test_set[i, target])-float(predicted_values[i]))**2
+
+	return sum_squared_error
+
+def create_train_test(data):
+	r.shuffle(data)
+	mid = int(len(data)/2)
+	train = data[:mid]
+	test = data[mid:]
+
+	return train, test
 
 
 
@@ -194,13 +215,17 @@ def main():
 	# #tree = id3(data, 0, 2)
 	# #print(classify(data_point, tree))
 
-	data = load_data('communities.data', 50)
+	data = load_data('communities.data', 1000)
 	attributes = load_attributes('attributes.txt')
-	tree_data = data[1:]
-	tree = id3(tree_data, 127, 5)
-	data_point = data[0]
-	print(classify(data_point, tree))
+	training_data, test_data = create_train_test(data)
+	# tree_data = data[1:]
+	target = 127
+	tree = id3(training_data, target, 6)
+	# data_point = data[0]
+	# print(classify(data_point, tree))
 	print_tree(tree, "tree_file.dot", attributes)
+	classifications = classify_test_data(test_data, tree)
+	print(sse(test_data, classifications, target))
 
 if __name__ == '__main__':
 	main()
