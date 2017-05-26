@@ -26,12 +26,20 @@ class Node:
 Takes in data from filepath
 Returns 2D array of data point vectors
 '''
-def load_data(filepath):
+def load_data(filepath, limit=None):
 	data_points = []
 	with open(filepath) as file:
-		for line in file.readlines():
+		to_load = file.readlines()
+		if not limit:
+			limit = len(to_load)
+		for line in to_load[:limit]:
 			data_points.append(line.strip().split(','))
 	return np.array(data_points)
+
+def load_attributes(filepath):
+	with open(filepath) as file:
+		attributes = [line.strip() for line in file.readlines()]
+	return attributes
 
 '''
 Calculates the standard deviation across one attribute for a set of data points
@@ -100,7 +108,7 @@ def id3(data_set, target, depth):
 		subset1 = []
 		subset2 = []
 		split_value = 0
-		for i in set(range(len(data_set[0]))) - set([target, 0, 1, 2, 3]):
+		for i in set(range(len(data_set[0]))) - set([target, 0, 1, 2, 3, 4]):
 			reduction, temp_subset1, temp_subset2, split = find_split(data_set, target, i)
 			if reduction > max_reduction:
 				max_reduction = reduction
@@ -130,17 +138,69 @@ def classify(data_point, decision_tree):
 	else:
 		return classify(data_point, decision_tree.right)
 
+def traverse(tree, f, attributes, ID):
+	if type(tree) == list:
+		return
+	else:
+		left_random, right_random = r.randint(1,100), r.randint(1,100)
+		if type(tree.left) == list:
+			f.write('\"{0} split on {1} ({3})\" -> \"{2}\";\n'.format(attributes[int(tree.attribute)], \
+																tree.split_value, \
+																np.mean(tree.left),
+																ID))
+		else:
+			f.write('\"{0} split on {1} ({4})\" -> \"{2} split on {3} ({5})\";\n'.format(attributes[int(tree.attribute)], \
+																			tree.split_value, \
+																			attributes[int(tree.left.attribute)], \
+																			tree.left.split_value,
+																			ID,
+																			left_random))
+		if type(tree.right) == list:
+			f.write('\"{0} split on {1} ({3})\" -> \"{2}\";\n'.format(attributes[int(tree.attribute)], \
+																tree.split_value, \
+																np.mean(tree.right),
+																ID))
+		else:
+			f.write('\"{0} split on {1} ({4})\" -> \"{2} split on {3} ({5})\";\n'.format(attributes[int(tree.attribute)], \
+																			tree.split_value, \
+																			attributes[int(tree.right.attribute)], \
+																			tree.right.split_value,
+																			ID,
+																			right_random))
+
+		traverse(tree.left, f, attributes, left_random)
+		traverse(tree.right, f, attributes, right_random)
+
+
+
+def print_tree(tree, filename, attributes):
+	with open(filename, 'w') as f:
+		f.write("digraph tree{\n")
+		traverse(tree, f, attributes, 0)
+		f.write("}\n")
+
+
+
+
 def main():
-	data = np.array([[.1, 0, .1, .1],
-					[.2, 0, .1, .2],
-					[.3, 0, '?', .2],
-					[.4, 0, .2, .4],
-					[.5, 0, .3, .5]])
+	# #data = np.array([[.1, 0, .1, .1],
+	# 				[.2, 0, .1, .2],
+	# 				[.3, 0, '?', .2],
+	# 				[.4, 0, .2, .4],
+	# 				[.5, 0, .3, .5]])
+	#
+	# #data_point = [.4, 0, .2, .4]
+	#
+	# #tree = id3(data, 0, 2)
+	# #print(classify(data_point, tree))
 
-	data_point = [.4, 0, .2, .4]
-
-	tree = id3(data, 0, 2)
+	data = load_data('communities.data', 50)
+	attributes = load_attributes('attributes.txt')
+	tree_data = data[1:]
+	tree = id3(tree_data, 127, 5)
+	data_point = data[0]
 	print(classify(data_point, tree))
+	print_tree(tree, "tree_file.dot", attributes)
 
 if __name__ == '__main__':
 	main()
