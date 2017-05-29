@@ -4,6 +4,7 @@ Aidan Holloway-Bidwell and Allie Warren
 Data Mining
 Final Project
 Decision Trees
+make dot png: dot -Tpng tree_file.dot -o tree_file.png
 '''
 
 import numpy as np
