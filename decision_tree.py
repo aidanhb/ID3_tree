@@ -8,6 +8,7 @@ Decision Trees
 
 import numpy as np
 import random as r
+from matplotlib import pyplot as plt
 
 '''
 A Node class for our decision tree. Left child contains subtree with attribute
@@ -99,16 +100,16 @@ Returns decision tree constructed using the ID3 algorithm
 Recursively finds optimal attribute to split the data set or subset on and
 branches there, continuing until depth is satisfied or data is fully divided
 '''
-def id3(data_set, target, depth):
+def id3(data_set, target, depth, attributes, repeats=True):
 	if depth == 0:
-		return [float(data_point[target]) for data_point in data_set]
+		return [float(data_point[target]) for data_point in data_set if data_point[target] != '?']
 	else:
 		max_attribute = 0
 		max_reduction = 0
 		subset1 = []
 		subset2 = []
 		split_value = 0
-		for i in set(range(len(data_set[0]))) - set([target, 0, 1, 2, 3, 4]):
+		for i in attributes:
 			reduction, temp_subset1, temp_subset2, split = find_split(data_set, target, i)
 			if reduction > max_reduction:
 				max_reduction = reduction
@@ -116,12 +117,14 @@ def id3(data_set, target, depth):
 				subset1 = temp_subset1
 				subset2 = temp_subset2
 				split_value = split
+		if not repeats:
+			attributes = attributes - set([max_attribute])
 		if len(subset1) == 0:
-			return [float(data_point[target]) for data_point in data_set]
+			return [float(data_point[target]) for data_point in data_set if data_point[target] != '?']
 		elif len(subset2) == 0:
-			return [float(data_point[target]) for data_point in data_set]
-		left = id3(subset1, target, depth - 1)
-		right = id3(subset2, target, depth - 1)
+			return [float(data_point[target]) for data_point in data_set if data_point[target] != '?']
+		left = id3(subset1, target, depth - 1, attributes, repeats)
+		right = id3(subset2, target, depth - 1, attributes, repeats)
 		node = Node(max_attribute, split_value, left, right)
 		return node
 
@@ -149,7 +152,7 @@ def traverse(tree, f, attributes, ID):
 	if type(tree) == list:
 		return
 	else:
-		left_random, right_random = r.randint(1,100), r.randint(1,100)
+		left_random, right_random = r.randint(1,10000), r.randint(1,10000)
 		if type(tree.left) == list:
 			f.write('\"{0} split on {1} ({3})\" -> \"{2}\";\n'.format(attributes[int(tree.attribute)], \
 																tree.split_value, \
@@ -188,10 +191,13 @@ def print_tree(tree, filename, attributes):
 
 def sse(test_set, predicted_values, target):
 	sum_squared_error = 0
+	count = 0
 	for i in  range(len(test_set)):
-		sum_squared_error = sum_squared_error + (float(test_set[i, target])-float(predicted_values[i]))**2
+		if test_set[i, target] != "?":
+			sum_squared_error = sum_squared_error + (float(test_set[i, target])-float(predicted_values[i]))**2
+			count = count + 1
 
-	return sum_squared_error
+	return sum_squared_error, count
 
 def create_train_test(data):
 	r.shuffle(data)
@@ -204,28 +210,26 @@ def create_train_test(data):
 
 
 def main():
-	# #data = np.array([[.1, 0, .1, .1],
-	# 				[.2, 0, .1, .2],
-	# 				[.3, 0, '?', .2],
-	# 				[.4, 0, .2, .4],
-	# 				[.5, 0, .3, .5]])
-	#
-	# #data_point = [.4, 0, .2, .4]
-	#
-	# #tree = id3(data, 0, 2)
-	# #print(classify(data_point, tree))
-
-	data = load_data('communities.data', 1000)
-	attributes = load_attributes('attributes.txt')
-	training_data, test_data = create_train_test(data)
-	# tree_data = data[1:]
-	target = 127
-	tree = id3(training_data, target, 6)
-	# data_point = data[0]
-	# print(classify(data_point, tree))
-	print_tree(tree, "tree_file.dot", attributes)
-	classifications = classify_test_data(test_data, tree)
-	print(sse(test_data, classifications, target))
+	sses = []
+	for size in [100,200,500,1000,1500]:
+		print('Doing {0}'.format(size))
+		data = load_data('communities.data', size)
+		attributes = load_attributes('attributes.txt')
+		training_data, test_data = create_train_test(data)
+		# tree_data = data[1:]
+		targets = [17, 90, 95, 109, 122, 127]
+		target = targets[1]
+		attributes_to_use = set(range(len(data[0]))) - set([target, 0, 1, 2, 3, 4])
+		tree = id3(training_data, target, 10, attributes_to_use, False)
+		# data_point = data[0]
+		# print(classify(data_point, tree))
+		print_tree(tree, "tree_file.dot", attributes)
+		classifications = classify_test_data(test_data, tree)
+		tup = sse(test_data, classifications, target)
+		sses.append(tup[0]/tup[1])
+	print(sses)
+	plt.plot(sses)
+	plt.show()
 
 if __name__ == '__main__':
 	main()
